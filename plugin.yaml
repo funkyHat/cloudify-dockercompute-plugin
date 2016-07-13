@@ -1,7 +1,9 @@
 plugins:
   dockercompute:
     executor: central_deployment_agent
-    source: dockercompute
+    source: https://github.com/dankilman/cloudify-dockercompute-plugin/archive/master.zip
+    package_name: cloudify-dockercompute-plugin
+    package_version: '0.1'
 
 node_types:
   cloudify.nodes.docker.Compute:
