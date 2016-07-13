@@ -29,8 +29,8 @@ PRIVATE_KEY_CONTAINER_PATH = '/etc/ssh/ssh_host_rsa_key'
 
 
 @operation
-def start(image=IMAGE, **_):
-    container_id = _start_container(image)
+def start(image=IMAGE, expose=None, **_):
+    container_id = _start_container(image, expose)
     _extract_container_ip(container_id)
     install_agent_script = ctx.agent.init_script({'user': 'root'})
     if install_agent_script:
@@ -51,10 +51,19 @@ def delete(**_):
         os.remove(key_path)
 
 
-def _start_container(image):
-    container_id = _docker(
-        'run',
-        '--privileged --expose=1-65535 -d {0}'.format(image))
+def _start_container(image, expose):
+    args = '--privileged -d'
+    if expose:
+        exposed_ports = []
+        for item in expose:
+            if hasattr(item, '__iter__'):
+                ports = '{0}-{1}'.format(item[0], item[1])
+            else:
+                ports = item
+            exposed_ports.append('--expose={0}'.format(ports))
+        args = '{0} {1}'.format(args, ' '.join(exposed_ports))
+    args = '{0} {1}'.format(args, image)
+    container_id = _docker('run', args)
     ctx.instance.runtime_properties['container_id'] = container_id
     return container_id
 
@@ -104,8 +113,8 @@ def _remote_agent_setup(container_id):
     key_path = _key_path()
     with open(key_path, 'w') as f:
         f.write(private_key)
-    agent_config = ctx.instance.runtime_properties.setdefault('cloudify_agent',
-                                                              {})
+    agent_config = ctx.instance.runtime_properties.setdefault(
+        'cloudify_agent', {})
     agent_config.update({
         'key': key_path,
         'user': 'root',
@@ -114,26 +123,28 @@ def _remote_agent_setup(container_id):
 
 def _wait_for_ssh_setup(container_id):
     attempt = 0
-    while attempt < 10:
+    while attempt < 100:
         try:
             return _docker_exec(container_id,
-                                'cat {0}'.format(PUBLIC_KEY_CONTAINER_PATH))
+                                'cat {0}'.format(PUBLIC_KEY_CONTAINER_PATH),
+                                quiet=True)
         except CommandExecutionException:
             attempt += 1
-            time.sleep(1)
+            time.sleep(0.1)
     raise
 
 
-def _docker_exec(container_id, args):
-    return _docker('exec', '{0} {1}'.format(container_id, args))
+def _docker_exec(container_id, args, quiet=False):
+    return _docker('exec', '{0} {1}'.format(container_id, args), quiet=quiet)
 
 
-def _docker(subcommand, args):
-    return _run('docker {0} {1}'.format(subcommand, args))
+def _docker(subcommand, args, quiet=False):
+    return _run('docker {0} {1}'.format(subcommand, args), quiet=quiet)
 
 
-def _run(command):
-    return LocalCommandRunner(logger=ctx.logger).run(command).std_out.strip()
+def _run(command, quiet=False):
+    logger = None if quiet else ctx.logger
+    return LocalCommandRunner(logger=logger).run(command).std_out.strip()
 
 
 def _key_path():
