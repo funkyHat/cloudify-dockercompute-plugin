@@ -1,0 +1,12 @@
+plugins:
+  dockercompute:
+    executor: central_deployment_agent
+    source: dockercompute
+
+node_types:
+  cloudify.nodes.docker.Compute:
+    derived_from: cloudify.nodes.Compute
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start: dockercompute.dockercompute.start
+        delete: dockercompute.dockercompute.delete
