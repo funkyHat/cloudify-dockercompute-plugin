@@ -1,10 +1,8 @@
 from setuptools import setup
 
 
-name = 'dockercompute'
-
 setup(
-    name=name,
+    name='cloudify-dockercompute-plugin'
     version='0.1',
-    py_modules=[name],
+    py_modules=['dockercompute'],
 )
