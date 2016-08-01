@@ -23,14 +23,18 @@ from cloudify.decorators import operation
 from cloudify.utils import LocalCommandRunner, CommandExecutionException
 from cloudify.exceptions import NonRecoverableError
 
-IMAGE = 'cloudify/centos:7'
 PUBLIC_KEY_CONTAINER_PATH = '/etc/ssh/ssh_host_rsa_key.pub'
 PRIVATE_KEY_CONTAINER_PATH = '/etc/ssh/ssh_host_rsa_key'
 
 
 @operation
-def start(image=IMAGE, expose=None, **_):
-    container_id = _start_container(image, expose)
+def start(**_):
+    import pdb; pdb.set_trace()
+    container_id = _start_container(
+		ctx.node.properties['image'],
+		ctx.node.properties['expose'],
+        ctx.node.properties.get('run_command', None),
+		)
     _extract_container_ip(container_id)
     install_agent_script = ctx.agent.init_script({'user': 'root'})
     if install_agent_script:
@@ -51,7 +55,7 @@ def delete(**_):
         os.remove(key_path)
 
 
-def _start_container(image, expose):
+def _start_container(image, expose, command=None):
     args = '--privileged -d'
     if expose:
         exposed_ports = []
@@ -63,6 +67,8 @@ def _start_container(image, expose):
             exposed_ports.append('--expose={0}'.format(ports))
         args = '{0} {1}'.format(args, ' '.join(exposed_ports))
     args = '{0} {1}'.format(args, image)
+    if command:
+        args += ' {}'.format(command)
     container_id = _docker('run', args)
     ctx.instance.runtime_properties['container_id'] = container_id
     return container_id

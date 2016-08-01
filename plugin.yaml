@@ -12,3 +12,15 @@ node_types:
       cloudify.interfaces.lifecycle:
         start: dockercompute.dockercompute.start
         delete: dockercompute.dockercompute.delete
+    properties:
+      image:
+        description: >
+          The docker image to deploy
+        default: cloudify/centos:7
+      expose:
+        description: >
+          List of ports which should be exposed by docker
+      run_command:
+        description: >
+          The command to run in the container to start the compute instance
+        default: /sbin/init
